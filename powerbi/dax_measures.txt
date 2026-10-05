@@ -1,0 +1,241 @@
+================================================================================
+CRICKET ANALYTICS SYSTEM: DAX MEASURES LIBRARY (READY FOR POWER BI)
+================================================================================
+Create a dedicated blank table in Power BI named "_Measures" to organize all measures.
+
+--------------------------------------------------------------------------------
+1. CORE MATCH & SUMMARY MEASURES
+--------------------------------------------------------------------------------
+
+Total Matches = 
+DISTINCTCOUNT(Fact_Matches[match_key])
+/* Simple distinct count of unique matches played */
+
+Total Runs = 
+SUM(Fact_BallByBall[total_runs])
+/* Total aggregate runs scored in the tournament across all innings */
+
+Runs Off Bat = 
+SUM(Fact_BallByBall[runs_off_bat])
+/* Total runs generated directly off batters' bats (excluding extras) */
+
+Total Extras = 
+SUM(Fact_BallByBall[extras])
+/* Total runs conceded via extras (wides, noballs, byes, legbyes, penalties) */
+
+Average Match Score = 
+DIVIDE([Total Runs], [Total Matches], 0)
+/* Average combined score scored per match */
+
+Average 1st Innings Score = 
+VAR Inn1Runs = CALCULATE(SUM(Fact_BallByBall[total_runs]), Fact_BallByBall[innings] = 1)
+VAR Inn1Matches = CALCULATE(DISTINCTCOUNT(Fact_BallByBall[match_key]), Fact_BallByBall[innings] = 1)
+RETURN
+DIVIDE(Inn1Runs, Inn1Matches, 0)
+/* Average target set by teams batting first */
+
+Average 2nd Innings Score = 
+VAR Inn2Runs = CALCULATE(SUM(Fact_BallByBall[total_runs]), Fact_BallByBall[innings] = 2)
+VAR Inn2Matches = CALCULATE(DISTINCTCOUNT(Fact_BallByBall[match_key]), Fact_BallByBall[innings] = 2)
+RETURN
+DIVIDE(Inn2Runs, Inn2Matches, 0)
+/* Average runs scored when chasing in second innings */
+
+
+--------------------------------------------------------------------------------
+2. BATTING PERFORMANCE MEASURES
+--------------------------------------------------------------------------------
+
+Total Balls Faced = 
+SUM(Fact_BallByBall[is_ball_faced])
+/* Total deliveries faced by batter (excludes wide balls per ICC rules) */
+
+Total Fours = 
+SUM(Fact_BallByBall[is_four])
+/* Count of boundaries scored */
+
+Total Sixes = 
+SUM(Fact_BallByBall[is_six])
+/* Count of maximums hit */
+
+Boundary Runs = 
+([Total Fours] * 4) + ([Total Sixes] * 6)
+/* Total runs scored solely through boundaries */
+
+Boundary % = 
+DIVIDE([Boundary Runs], [Runs Off Bat], 0)
+/* Proportion of runs derived from boundaries (Format as Percentage 0.0%) */
+
+Total Dismissals = 
+CALCULATE(
+    COUNTROWS(Fact_BallByBall),
+    Fact_BallByBall[is_wicket] = 1,
+    Fact_BallByBall[player_dismissed] = SELECTEDVALUE(Dim_Player[player_name], Fact_BallByBall[striker])
+)
+/* Total dismissals for selected player */
+
+Batting Average = 
+VAR Dismissals = [Total Dismissals]
+RETURN
+IF(
+    Dismissals = 0,
+    [Runs Off Bat],
+    DIVIDE([Runs Off Bat], Dismissals, BLANK())
+)
+/* Career/Season batting average (Format as Decimal 0.00) */
+
+Batting Strike Rate = 
+DIVIDE([Runs Off Bat], [Total Balls Faced], 0) * 100
+/* Scoring rate per 100 legal balls faced (Format as Decimal 0.00) */
+
+Powerplay Runs = 
+CALCULATE([Runs Off Bat], Fact_BallByBall[match_phase] = "Powerplay")
+
+Powerplay Strike Rate = 
+VAR Runs = CALCULATE([Runs Off Bat], Fact_BallByBall[match_phase] = "Powerplay")
+VAR Balls = CALCULATE([Total Balls Faced], Fact_BallByBall[match_phase] = "Powerplay")
+RETURN
+DIVIDE(Runs, Balls, 0) * 100
+
+Death Overs Runs = 
+CALCULATE([Runs Off Bat], Fact_BallByBall[match_phase] = "Death")
+
+Death Overs Strike Rate = 
+VAR Runs = CALCULATE([Runs Off Bat], Fact_BallByBall[match_phase] = "Death")
+VAR Balls = CALCULATE([Total Balls Faced], Fact_BallByBall[match_phase] = "Death")
+RETURN
+DIVIDE(Runs, Balls, 0) * 100
+
+Batting Impact Index = 
+VAR Inns = DISTINCTCOUNT(Fact_BallByBall[match_key])
+VAR RunsPerInn = DIVIDE([Runs Off Bat], Inns, 0)
+VAR SR = [Batting Strike Rate]
+VAR BndPct = [Boundary %] * 100
+RETURN
+ROUND((RunsPerInn * 0.4) + ((SR / 100) * 20) + (BndPct * 0.5), 2)
+/* Advanced Performance Science scoring index */
+
+
+--------------------------------------------------------------------------------
+3. BOWLING PERFORMANCE MEASURES
+--------------------------------------------------------------------------------
+
+Total Wickets = 
+SUM(Fact_BallByBall[is_bowler_wicket])
+/* Official bowler wickets (excludes run-outs and retired outs) */
+
+Legal Balls Bowled = 
+SUM(Fact_BallByBall[is_legal_ball])
+/* Legal deliveries bowled (excludes wides and no-balls) */
+
+Overs Bowled = 
+DIVIDE([Legal Balls Bowled], 6, 0)
+/* Exact fractional overs bowled for rate calculations */
+
+Overs Bowled Display = 
+VAR CompOvers = INT(DIVIDE([Legal Balls Bowled], 6, 0))
+VAR RemBalls = MOD([Legal Balls Bowled], 6)
+RETURN
+CompOvers + (RemBalls / 10)
+/* Formatted overs string (e.g., 4.2 overs) */
+
+Bowler Runs Conceded = 
+SUM(Fact_BallByBall[bowler_runs])
+/* True bowler runs conceded (excludes byes and legbyes) */
+
+Economy Rate = 
+DIVIDE([Bowler Runs Conceded], [Overs Bowled], BLANK())
+/* Average runs conceded per 6-ball over (Format as Decimal 0.00) */
+
+Bowling Average = 
+DIVIDE([Bowler Runs Conceded], [Total Wickets], BLANK())
+/* Runs conceded per wicket taken (Format as Decimal 0.00) */
+
+Bowling Strike Rate = 
+DIVIDE([Legal Balls Bowled], [Total Wickets], BLANK())
+/* Balls needed per wicket (Format as Decimal 0.00) */
+
+Total Dot Balls = 
+SUM(Fact_BallByBall[is_dot_ball])
+/* Count of scoreless deliveries */
+
+Dot Ball % = 
+DIVIDE([Total Dot Balls], COUNTROWS(Fact_BallByBall), 0)
+/* Proportion of total deliveries that yielded zero runs (Format as 0.0%) */
+
+Powerplay Wickets = 
+CALCULATE([Total Wickets], Fact_BallByBall[match_phase] = "Powerplay")
+
+Death Overs Wickets = 
+CALCULATE([Total Wickets], Fact_BallByBall[match_phase] = "Death")
+
+Bowling Impact Index = 
+VAR Inns = DISTINCTCOUNT(Fact_BallByBall[match_key])
+VAR WktsPerInn = DIVIDE([Total Wickets], Inns, 0)
+VAR Econ = [Economy Rate]
+VAR EconSup = IF(Econ < 8.5, 8.5 - Econ, 0)
+VAR DotPct = [Dot Ball %] * 100
+RETURN
+ROUND((WktsPerInn * 25) + (EconSup * 8) + (DotPct * 0.4), 2)
+
+
+--------------------------------------------------------------------------------
+4. TEAM & MATCH DYNAMICS MEASURES
+--------------------------------------------------------------------------------
+
+Team Matches Played = 
+VAR CurrentTeam = SELECTEDVALUE(Dim_Team[team_name])
+RETURN
+CALCULATE(
+    COUNTROWS(Fact_Matches),
+    Fact_Matches[team1] = CurrentTeam || Fact_Matches[team2] = CurrentTeam,
+    ALL(Dim_Team)
+)
+
+Team Wins = 
+VAR CurrentTeam = SELECTEDVALUE(Dim_Team[team_name])
+RETURN
+CALCULATE(
+    COUNTROWS(Fact_Matches),
+    Fact_Matches[winner] = CurrentTeam,
+    ALL(Dim_Team)
+)
+
+Team Win % = 
+DIVIDE([Team Wins], [Team Matches Played], 0)
+/* Format as Percentage 0.0% */
+
+Chasing Wins = 
+CALCULATE(
+    COUNTROWS(Fact_Matches),
+    Fact_Matches[win_type] = "Chasing"
+)
+
+Chasing Win % = 
+DIVIDE([Chasing Wins], [Total Matches], 0)
+/* Percentage of tournament matches won batting second (Format as 0.0%) */
+
+Defending Wins = 
+CALCULATE(
+    COUNTROWS(Fact_Matches),
+    Fact_Matches[win_type] = "Defending"
+)
+
+Defending Win % = 
+DIVIDE([Defending Wins], [Total Matches], 0)
+/* Percentage of tournament matches won batting first (Format as 0.0%) */
+
+Toss Win % = 
+DIVIDE(
+    CALCULATE(COUNTROWS(Fact_Matches), Fact_Matches[toss_winner_key] = SELECTEDVALUE(Dim_Team[team_key])),
+    [Team Matches Played],
+    0
+)
+
+Toss Match Win Correlation % = 
+DIVIDE(
+    CALCULATE(COUNTROWS(Fact_Matches), Fact_Matches[is_toss_win_match_win] = 1),
+    [Total Matches],
+    0
+)
+/* Overall probability that winning the toss translates to match victory */
