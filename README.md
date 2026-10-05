@@ -218,8 +218,3 @@ jupyter notebook notebooks/
 
 ---
 
-## 👤 Author & Contact
-
-- **Author**: Data Scientist / Sports Analytics Specialist
-- **Target**: MSc Data Science Portfolio / Sports Intelligence Desks
-- **Inquiries**: Open an issue or connect on [LinkedIn](https://linkedin.com)
