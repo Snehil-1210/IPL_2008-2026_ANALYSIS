@@ -39,7 +39,7 @@ Rather than treating cricket statistics as simple aggregations, this architectur
 
 | Domain | Tools & Libraries | Application |
 | :--- | :--- | :--- |
-| **Data Acquisition** | Python, `urllib`, `zipfile` | Automated download and extraction from official Cricsheet open data feeds |
+| **Data Acquisition** | Python, `urllib`, `zipfile` |  Downloaded and extracted from official Cricsheet open data feeds |
 | **Data Engineering** | Pandas, NumPy | Schema standardization, domain rule enforcement, date parsing, vectorization |
 | **Data Modeling** | Relational Star Schema | Primary-to-foreign surrogate key modeling for VertiPaq engine optimization |
 | **Data Visualization** | Matplotlib, Seaborn | Publication-ready exploratory graphs and quadrant matrices |
